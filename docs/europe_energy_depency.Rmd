@@ -1,0 +1,163 @@
+---
+title: "EU's Energy Depency"
+author: "Eemil Mitikka"
+date: "2023-02-12"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Libraries
+
+```{r}
+library(here)
+library(tidyverse)
+library(rnaturalearth)
+library(janitor)
+
+
+
+
+world <- ne_countries(scale = "medium", type = "map_units", returnclass = "sf")
+
+```
+
+
+
+
+```{r}
+# russia <- ne_states(country = "Russia", returnclass = "sf")
+
+europe <- world %>% 
+  filter(continent == "Europe")
+
+# ggplot() +
+#   geom_sf(data = russia) +
+#   ggtitle("Europe") +
+#   theme_light()
+
+ggplot() +
+  geom_sf(data = europe) +
+  ggtitle("Europe, cropped") +
+  theme_light() +
+  coord_sf(xlim = c(-25, 40), ylim = c(35,70))
+
+
+df_map <- 
+here("data/t2020_rd320_page_linear.csv") %>% 
+  read.csv() %>% 
+  clean_names() %>% 
+  filter(time_period == 2020) %>% 
+  select(geo, obs_value) %>% 
+  filter(!geo %in% c("EU27_2020", "EA19"))
+
+
+library(ISOcodes)
+
+df_iso <-
+  ISO_3166_1 %>% 
+  select(Alpha_2, Numeric, Name) %>% 
+  rename(geo = Alpha_2,
+         iso = Numeric,
+         country = Name)
+
+df_map2 <- merge(df_map, df_iso, by = "geo", all.x = T)
+df_map2 <- 
+df_map2 %>%
+  mutate(country = 
+           case_when(geo == "EL" ~ "Greece",
+                     geo == "XK" ~ "Kosovo",
+                     TRUE ~ country),
+         iso = case_when(geo == "EL" ~ "300",
+                         geo == "XK" ~ "926",
+                         TRUE ~ iso))
+df_map2 <- 
+df_map2 %>% 
+  mutate(iso2 = iso) %>% 
+  mutate(geo = 
+           case_when(geo == "EL" ~ "GR",
+                     TRUE ~ geo),
+         region = country)
+
+df_europe <- as.data.frame(europe)
+
+ggplot(df_map2) +
+  aes(x = country, y = obs_value)
+
+map_data <- map_data("world")
+
+View(map_data)
+
+europe_dep <-
+map_data %>% 
+  mutate(region = case_when(region == "Czech Republic" ~ "Czechia",
+                            TRUE ~ region)) %>% 
+  left_join(df_map2, by = "region")  
+  # filter(obs_value != "NA" | region == "Russia") %>% 
+
+p <- 
+europe_dep %>% 
+  filter(region %in% c("Russia", "Belarus", "Ukraine", "UK", "Switzerland", "Moldova", "Norway") | obs_value != "NA")
+
+p <- 
+  p %>% 
+  mutate(obs_value = na_if(obs_value, -623.059))
+
+# p %>% 
+#   filter(obs_value < 0)
+           
+map_data %>% 
+  filter(str_detect(region, "Cz"))
+
+
+  
+df_map2 %>% 
+  filter(str_detect(region, "Mol"))
+
+map_data %>% 
+  filter(str_detect(region, "Mol"))
+
+# p %>% 
+  # filter(obs_value > 0) %>% 
+  ggplot(p) +
+  aes(x = long, y = lat, group = group) +
+  geom_polygon(aes(fill = obs_value), color = "black") +
+  # coord_sf(xlim = c(-25, 40), ylim = c(35,70))
+  coord_map("azequalarea", xlim = c(-8, 40), ylim = c(36,70)) +
+  scale_fill_viridis_c(option = "turbo")
+  
+?scale_fill_viridis_c  
+
+consum <- 
+  here("data/IGGIELGNC3_Consumers.csv") %>% 
+  read.csv(sep = ";")
+
+?read.csv
+
+pipes <- 
+  here("data/IGGIELGNC3_PipeSegments.csv") %>% 
+  read.csv(sep = ";")
+
+pipes <- pipes %>% 
+  mutate(lat = str_replace_all(lat, "\\[|\\]", ""),
+         long = str_replace_all(long, "\\[|\\]", "")) %>% 
+  separate(lat, c("lat_1", "lat_2"), ",") %>% 
+  separate(long, c("long_1", "long_2"), ",")
+
+pipes2 <- pipes %>% 
+  select(lat_1:long_2)
+
+lat_1 <- pipes2$lat_1
+
+p %>% 
+  full_join(pipes2)
+
+pipes %>% 
+  distinct(country_code)
+
+
+
+```
+
