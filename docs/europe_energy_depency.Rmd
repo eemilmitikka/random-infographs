@@ -157,6 +157,12 @@ p %>%
 pipes %>% 
   distinct(country_code)
 
+pipes2
+# 
+# ggplot(pipes2) +
+#   aes(x = lat_1, y = long_1)  +
+#   geom_line()
+
 
 
 ```
